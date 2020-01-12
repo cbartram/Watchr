@@ -3,6 +3,7 @@ package com.app.watchr;
 import com.app.watchr.service.DockerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -22,6 +23,12 @@ public class Watchr {
 	@Autowired
 	private ImageUpdater imageUpdater;
 
+	@Value("${container.name}")
+	private String containerName;
+
+	@Value("${image.name}")
+	private String imageName;
+
 	private List<Version> tagNames; // Tags should all be semantically versioned
 
 	public static void main(String[] args) {
@@ -31,19 +38,20 @@ public class Watchr {
 	@PostConstruct
 	public void init() {
 		log.info("Finding initial tags from the Docker hub repository...");
-		this.tagNames = dockerService.getRemoteVersions();
+//		this.tagNames = dockerService.getRemoteVersions(imageName);
 		log.info("Found the following tags from initial query: {}", tagNames);
 	}
 
 	@Scheduled(fixedDelayString = "${polling.delay:60}000")
-	private void loop() {
-		List<Version> latestTags = dockerService.getRemoteVersions();
-		log.info("Latest Tags: {}", latestTags);
+	private void poll() {
+//		List<Version> latestTags = dockerService.getRemoteVersions(imageName);
+//		log.info("Latest Tags: {}", latestTags);
+		imageUpdater.updateImage(containerName, imageName, new Version("1.0.1"));
 		// If new tag is here update the container
-		if(imageUpdater.shouldUpdate(tagNames, latestTags)) {
-			log.info("We need to updated now!");
-		} else {
-			log.info("No need to update tags are the same");
-		}
+//		if(imageUpdater.shouldUpdate(tagNames, latestTags)) {
+//			log.info("Updating image...");
+//		} else {
+//			log.info("No need to update. Latest tags are the same");
+//		}
 	}
 }

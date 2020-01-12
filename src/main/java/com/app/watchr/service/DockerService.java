@@ -36,9 +36,10 @@ public class DockerService {
      * of Version objects sorted correctly by semantic version.
      * @return List of Version objects
      */
-    public List<Version> getRemoteVersions() {
-       ImageTag tags = this.fetchTags("cbartram/inventory_management");
+    public List<Version> getRemoteVersions(final String imageName) {
+       ImageTag tags = this.fetchTags(imageName);
 
+       log.debug("Image Tag: {}", tags);
        if(tags != null) {
             return tags.getResults()
                .stream()

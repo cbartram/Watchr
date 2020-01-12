@@ -26,9 +26,9 @@ public class ImageUpdaterTest {
 		currentImages.add(new Version("2.0.1"));
 
 		DockerService dockerService = mock(DockerService.class);
-		when(dockerService.getRemoteVersions()).thenReturn(currentImages);
+		when(dockerService.getRemoteVersions("foo")).thenReturn(currentImages);
 
-		ImageUpdater imageUpdater = new ImageUpdater(dockerService);
+		ImageUpdater imageUpdater = new ImageUpdater();
 		Assert.assertFalse(imageUpdater.shouldUpdate(currentImages, currentImages));
 	}
 
@@ -51,9 +51,9 @@ public class ImageUpdaterTest {
 		latestImages.add(new Version("2.0.2"));
 
 		DockerService dockerService = mock(DockerService.class);
-		when(dockerService.getRemoteVersions()).thenReturn(latestImages);
+		when(dockerService.getRemoteVersions("foo")).thenReturn(latestImages);
 
-		ImageUpdater imageUpdater = new ImageUpdater(dockerService);
+		ImageUpdater imageUpdater = new ImageUpdater();
 		Assert.assertTrue(imageUpdater.shouldUpdate(currentImages, latestImages));
 	}
 
@@ -77,9 +77,9 @@ public class ImageUpdaterTest {
 		latestImages.add(new Version("1.1.5"));
 
 		DockerService dockerService = mock(DockerService.class);
-		when(dockerService.getRemoteVersions()).thenReturn(latestImages);
+		when(dockerService.getRemoteVersions("foo")).thenReturn(latestImages);
 
-		ImageUpdater imageUpdater = new ImageUpdater(dockerService);
+		ImageUpdater imageUpdater = new ImageUpdater();
 		Assert.assertFalse(imageUpdater.shouldUpdate(currentImages, latestImages));
 	}
 
