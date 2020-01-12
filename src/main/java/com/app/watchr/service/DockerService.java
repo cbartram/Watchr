@@ -4,17 +4,26 @@ import com.app.watchr.Version;
 import com.app.watchr.model.ImageTag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.TrustStrategy;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import javax.net.ssl.SSLContext;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,10 +37,32 @@ public class DockerService {
     private HttpHeaders headers;
 
     public DockerService() {
-        this.template = new RestTemplate();
-        this.headers = new HttpHeaders();
-        headers.add("Content-Type", "application/json");
-        headers.add("Accept", "application/json");
+        TrustStrategy acceptingTrustStrategy = (x509Certificates, s) -> true;
+        try {
+            SSLContext sslContext = org.apache.http.ssl.SSLContexts.custom()
+                    .loadTrustMaterial(null, acceptingTrustStrategy)
+                    .build();
+
+            SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext);
+            CloseableHttpClient httpClient = HttpClients.custom()
+                    .setSSLSocketFactory(csf)
+                    .build();
+
+            HttpComponentsClientHttpRequestFactory requestFactory =
+                    new HttpComponentsClientHttpRequestFactory();
+
+            requestFactory.setHttpClient(httpClient);
+            this.template = new RestTemplate(requestFactory);
+            this.headers = new HttpHeaders();
+            headers.add("Content-Type", "application/json");
+            headers.add("Accept", "application/json");
+        } catch(NoSuchAlgorithmException e) {
+            log.error("No such algorithm exception thrown while building SSL enabled rest template.", e);
+        } catch(KeyStoreException e) {
+            log.error("Key store exception thrown while building ssl enabled rest template.", e);
+        } catch(KeyManagementException e) {
+            log.error("Key management exception thrown while building ssl enabled rest template.", e);
+        }
     }
 
     /**
