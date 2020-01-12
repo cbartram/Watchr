@@ -1,4 +1,4 @@
-FROM openjdk:8-jdk-alpine
+FROM hypriot/rpi-java
 
 # Add a volume pointing to /tmp
 VOLUME /tmp
