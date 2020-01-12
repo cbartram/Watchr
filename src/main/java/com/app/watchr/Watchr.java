@@ -38,20 +38,20 @@ public class Watchr {
 	@PostConstruct
 	public void init() {
 		log.info("Finding initial tags from the Docker hub repository...");
-//		this.tagNames = dockerService.getRemoteVersions(imageName);
+		this.tagNames = dockerService.getRemoteVersions(imageName);
 		log.info("Found the following tags from initial query: {}", tagNames);
 	}
 
 	@Scheduled(fixedDelayString = "${polling.delay:60}000")
 	private void poll() {
-//		List<Version> latestTags = dockerService.getRemoteVersions(imageName);
-//		log.info("Latest Tags: {}", latestTags);
-		imageUpdater.updateImage(containerName, imageName, imageUpdater.getLatestVersion());
+		List<Version> latestTags = dockerService.getRemoteVersions(imageName);
+		log.info("Latest Tags: {}", latestTags);
 		// If new tag is here update the container
-//		if(imageUpdater.shouldUpdate(tagNames, latestTags)) {
-//			log.info("Updating image...");
-//		} else {
-//			log.info("No need to update. Latest tags are the same");
-//		}
+		if(imageUpdater.shouldUpdate(tagNames, latestTags)) {
+			log.info("Updating image...");
+			imageUpdater.updateContainer(containerName, imageName, imageUpdater.getLatestVersion());
+		} else {
+			log.info("No need to update. Latest tags are the same");
+		}
 	}
 }

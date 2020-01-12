@@ -1,5 +1,6 @@
 package com.app.watchr;
 
+import com.app.watchr.service.CommandService;
 import com.app.watchr.service.DockerService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,9 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,24 +22,47 @@ public class ImageUpdater {
     @Autowired
     private DockerService dockerService;
 
+    @Autowired
+    private CommandService commandService;
+
     private final ObjectMapper mapper = new ObjectMapper();
     private String containerMetadata;
 
     @Getter
     private Version latestVersion;
 
-
-    public void stopContainer(final String containerName) {
+    /**
+     * Stops a currently running container given either the container name or id
+     * @param containerName String container name or id
+     * @return Boolean True if the container was stopped successfully and false otherwise
+     */
+    public boolean stopContainer(final String containerName) {
         try {
-            Process process = Runtime.getRuntime().exec("docker container stop " + containerName);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            String error;
-            while ((error = stdError.readLine()) != null) {
-                log.error("Std Error: {}", error);
-            }
-        } catch(IOException e) {
-            log.error("IOException thrown while attempting to start new container", e);
+            log.info("Attempting to stop container: {}", containerName);
+            commandService.exec("docker container stop " + containerName);
+            log.info("Container: {} stopped successfully.", containerName);
+            return true;
+        } catch(RuntimeException e) {
+            log.error("Runtime exception thrown while attempting to stop container: {}", containerName, e);
+            return false;
+        }
+    }
+
+    /**
+     * Deletes a previously stopped container freeing up the container name to be used by
+     * a new container
+     * @param containerName String container name
+     * @return Boolean true if the container was deleted successfully and false otherwise
+     */
+    public boolean deleteContainer(final String containerName) {
+        try {
+            log.info("Attempting to delete container: {}", containerName);
+            commandService.exec("docker container rm " + containerName);
+            log.info("Container: {} deleted successfully.", containerName);
+            return true;
+        } catch(RuntimeException e) {
+            log.error("Runtime exception thrown while attempting to delete container: {}", containerName, e);
+            return false;
         }
     }
 
@@ -48,21 +70,47 @@ public class ImageUpdater {
      * Updates an image to the latest version of itself using semantic versioning.
      * @param containerName String the container name to run the container as (same as currently running container name)
      * @param imageName String the image name for this image from docker hub.
-     * @param version String the new version
+     * @param version String the new version of this container to start
      */
-    public void startContainer(final String containerName, final String imageName, final Version version) {
+    public boolean startContainer(final String containerName, final String imageName, final Version version) {
         String containerId = dockerService.getContainerId(containerName);
         this.containerMetadata = dockerService.getMetaData(containerId);
         try {
-            Process process = Runtime.getRuntime().exec(getRunCommand(containerName,  imageName, version, getContainerPort(), getEnv()));
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            String error;
-            while ((error = stdError.readLine()) != null) {
-                log.error("Std Error: {}", error);
+            final String run = getRunCommand(containerName,  imageName, version, getContainerPort(), getEnv());
+            log.info("Attempting to start new container using command: {}", run);
+            commandService.exec(run);
+            log.info("Container {} has been started successfully!", containerName);
+            return true;
+        } catch(RuntimeException e) {
+            log.error("Runtime exception thrown while attempting to start new container: {}", containerName, e);
+            return false;
+        }
+    }
+
+    /**
+     * Helper method for stopping, removing, and re-starting a new container
+     * @param containerName String container name to create
+     * @param imageName String image name to update from
+     * @param version Version the version to deploy (start)
+     * @return Boolean true if the container can be updated and false otherwise
+     */
+    public boolean updateContainer(final String containerName, final String imageName, final Version version) {
+        if(stopContainer(containerName)) {
+            if (deleteContainer(containerName)) {
+               if(startContainer(containerName, imageName, version)) {
+                   log.info("Started@V{}", version.getVersion());
+                   return true;
+               } else {
+                   log.error("Failed to start new container: {} see additional error logging above", containerName);
+                   return false;
+               }
+            } else {
+                log.error("Failed to delete existing container: {} see additional error logging above.", containerName);
+                return false;
             }
-        } catch(IOException e) {
-            log.error("IOException thrown while attempting to start new container", e);
+        } else {
+            log.error("Failed to update container: {} see additional error logging above.", containerName);
+            return false;
         }
     }
 
