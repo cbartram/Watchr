@@ -46,7 +46,7 @@ public class Watchr {
 	private void poll() {
 //		List<Version> latestTags = dockerService.getRemoteVersions(imageName);
 //		log.info("Latest Tags: {}", latestTags);
-		imageUpdater.updateImage(containerName, imageName, new Version("1.0.1"));
+		imageUpdater.updateImage(containerName, imageName, imageUpdater.getLatestVersion());
 		// If new tag is here update the container
 //		if(imageUpdater.shouldUpdate(tagNames, latestTags)) {
 //			log.info("Updating image...");

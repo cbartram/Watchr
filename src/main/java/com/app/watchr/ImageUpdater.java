@@ -3,6 +3,7 @@ package com.app.watchr;
 import com.app.watchr.service.DockerService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -25,7 +26,31 @@ public class ImageUpdater {
     private final ObjectMapper mapper = new ObjectMapper();
     private String containerMetadata;
 
-    public void updateImage(final String containerName, final String imageName, final Version version) {
+    @Getter
+    private Version latestVersion;
+
+
+    public void stopContainer(final String containerName) {
+        try {
+            Process process = Runtime.getRuntime().exec("docker container stop " + containerName);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String error;
+            while ((error = stdError.readLine()) != null) {
+                log.error("Std Error: {}", error);
+            }
+        } catch(IOException e) {
+            log.error("IOException thrown while attempting to start new container", e);
+        }
+    }
+
+    /**
+     * Updates an image to the latest version of itself using semantic versioning.
+     * @param containerName String the container name to run the container as (same as currently running container name)
+     * @param imageName String the image name for this image from docker hub.
+     * @param version String the new version
+     */
+    public void startContainer(final String containerName, final String imageName, final Version version) {
         String containerId = dockerService.getContainerId(containerName);
         this.containerMetadata = dockerService.getMetaData(containerId);
         try {
@@ -66,7 +91,12 @@ public class ImageUpdater {
             // [1.0.8, 1.0.9, 1.0.10] [1.0.8, 1.0.9]
             Version lastLatest = latestTags.get(latestTags.size() - 1);
             Version lastPrevious = currentTags.get(currentTags.size() - 1);
-            return lastLatest.compareTo(lastPrevious) >= 1;
+            if(lastLatest.compareTo(lastPrevious) >= 1) {
+                this.latestVersion = lastLatest;
+                return true;
+            } else {
+                return false;
+            }
         } else {
             log.info("Tag Sizes are equal no new images have been published. Sleeping...");
             return false;
