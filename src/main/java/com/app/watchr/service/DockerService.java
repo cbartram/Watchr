@@ -12,6 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -71,6 +74,62 @@ public class DockerService {
             return tags;
         } catch(Exception e) {
             log.error("There was an error reading the response body: {} into the ImageTag class", responseEntity.getBody(), e);
+            return null;
+        }
+    }
+
+
+    /**
+     * Gets the running container id given its name
+     * @param containerName String the containers name
+     * @return String the containers full id.
+     */
+    public String getContainerId(final String containerName) {
+        try {
+            Process process = Runtime.getRuntime().exec("docker inspect --format=\"{{.Id}}\" " + containerName);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String error;
+            while ((error = stdError.readLine()) != null) {
+                log.error("Std Error: {}", error);
+            }
+
+            return reader.readLine().replaceAll("^\"|\"$", "");
+        } catch(IOException e) {
+            log.error("IOException thrown while attempting to retrieve running container id", e);
+            return null;
+        }
+    }
+
+    /**
+     * Fetches meta-data about a docker container given the container ID
+     * @param containerId String container id to look up meta-data for
+     * @return String raw JSON meta-data
+     */
+    public String getMetaData(final String containerId) {
+        try {
+            Process process = Runtime.getRuntime().exec("docker container inspect " + containerId);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String error;
+            String line;
+            StringBuilder builder = new StringBuilder();
+            boolean execFailed = false;
+            while ((error = stdError.readLine()) != null) {
+                log.error("Exec Error: {}", error);
+                execFailed = true;
+            }
+
+            if(execFailed) return null;
+
+            while ((line = reader.readLine()) != null) {
+                log.info("Line: {}", line);
+                builder.append(line);
+            }
+
+            return builder.toString();
+        } catch(IOException e) {
+            log.error("IOException thrown while trying to retrieve container meta-data from docker daemon: ", e);
             return null;
         }
     }
