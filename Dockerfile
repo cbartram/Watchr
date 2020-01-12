@@ -9,4 +9,4 @@ ARG JAR_FILE=target/watchr-0.0.1-SNAPSHOT.jar
 
 ADD ${JAR_FILE} watchr.jar
 
-ENTRYPOINT ["java", "-jar", "/watchr.jar"]
+ENTRYPOINT ["java", "-jar", "watchr.jar"]
