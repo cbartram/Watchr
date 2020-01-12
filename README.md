@@ -1,3 +1,7 @@
+<p align="center">
+    <img src="https://i.imgur.com/p6z8KIs.png" width="120" height="120">
+</p>
+
 # Watchr
 
 Continuously monitors your docker images for updates and changes.
